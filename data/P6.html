@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Information</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f1f1f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            text-align: center;
+            width: 90vw;
+        }
+        .header {
+            background-color: #4a4a4a;
+            color: white;
+            padding: 10px;
+            border-radius: 5px 5px 0 0;
+            margin-bottom: 20px;
+        }
+        .sub-header {
+            background-color: red;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .question {
+            margin-bottom: 20px;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #ccc;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            height: 50px;
+            width: 120px;
+        }
+        .button.active {
+            background-color: red;
+            color: white;
+        }
+        .done-button {
+            background-color: #4a4a4a;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            height: 50px;
+            width: 120px;
+        }
+    </style>
+    <script>
+        let selectedOption = null;
+
+        function toggleButton(button) {
+            if (button.id === 'yesButton') {
+                document.getElementById('yesButton').classList.add('active');
+                document.getElementById('noButton').classList.remove('active');
+                selectedOption = 'yes';
+            } else {
+                document.getElementById('noButton').classList.add('active');
+                document.getElementById('yesButton').classList.remove('active');
+                selectedOption = 'no';
+            }
+        }
+
+        function handleDone() {
+            if (selectedOption === null) {
+                alert('Please select an option before proceeding.');
+                return;
+            }
+            else
+            {
+                fetch('/fill_data_auto_or_not', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ selectedOption: selectedOption })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // alert('data.status: ' + data.status + '\ndata.url: ' + data.url);
+                    if (data.status === 'redirect') {
+                        window.location.href = data.url;
+                    } else {
+                        console.log('Success:', data);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+            }
+            // Store the selected option value to use in ESP32
+            console.log('Selected option:', selectedOption);
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">SITE INFORMATION</div>
+        <div class="sub-header">Company Details:</div>
+        <div class="question">
+            There are other Devices of same type in the network. Do you want to automatically fill the details from them?
+        </div>
+        <div class="button-container">
+            <button id="yesButton" class="button" onclick="toggleButton(this)">Yes</button>
+            <button id="noButton" class="button" onclick="toggleButton(this)">No</button>
+        </div>
+        <button class="done-button" onclick="handleDone()">Done</button>
+    </div>
+</body>
+</html>

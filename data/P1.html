@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patent & Copyright Acknowledgment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 90vw;
+        }
+        .checkbox-container {
+            margin-top: 20px;
+        }
+        .next-button {
+            display: none;
+            margin-top: 20px;
+        }
+        .container button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+            display: none;
+            height: 50px;
+            width: 120px;
+        }
+        .container button:hover {
+            background-color: #555;
+        }
+    </style>
+    <script>
+        function toggleButton() {
+            var checkbox = document.getElementById("acknowledgmentCheckbox");
+            var button = document.getElementById("nextButton");
+            if (checkbox.checked) {
+                button.style.display = "block";
+            } else {
+                button.style.display = "none";
+            }
+        }
+        function Next() {
+            var get_data = "terms accepted";
+
+            // Replace this alert with the actual function call to ESP32
+            // alert('SSID: ' + ssid + '\nPassword: ' + password);
+
+            fetch('/connect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ get_data: get_data })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // alert('data.status: ' + data.status + '\ndata.url: ' + data.url);
+                if (data.status === 'redirect') {
+                    window.location.href = data.url;
+                } else {
+                    console.log('Success:', data);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <h1>Patent & Copyright Acknowledgment</h1>
+    <p>This acknowledgment is made by the Client to Fyrebox (Pty) Ltd, a company, hereinafter called "The Patent/Copyright Holder".</p>
+    <p>By execution of this acknowledgment, the Client understands that it may not open the product, duplicate any portion of the product, download or amend any software associated with the product or make copies of the contents of the product under any circumstances during the Client’s possession of the Fyreboc product.</p>
+    <p>The Client also understands and acknowledges that the The Patent/Copyright Holder has the right to change the Policy from time to time, including the term of the undertaking, the product components to which this undertaking refers or any software related to this product.</p>
+    <p>The Client acknowledges its obligation to assign, and do hereby assign, inventions and patents that the Client may conceive or develop within the course and scope of its use of the product to the The Patent/Copyright Holder. The Client further acknowledges its obligation to promptly report and fully disclose the conception and/or reduction to practice of potentially patentable inventions to the The Patent/Copyright Holder during the Client’s use of the product. The Client shall promptly furnish The Patent/Copyright Holder with complete information with respect to each.</p>
+    <p>In selecting the below box of this acknowledgment, the Client confirms that the Laws of the Republic of South-Africa and any other applicable international laws govern this contractual undertaking and acknowledgement.</p>
+    <p><strong>NOTICE:</strong><br>
+    I hereby acknowledge, understand and accept the above information:</p>
+    <div class="checkbox-container">
+        <input type="checkbox" id="acknowledgmentCheckbox" onclick="toggleButton()">
+        <label for="acknowledgmentCheckbox">I accept this Patent and copyright acknowledgment.</label>
+    </div>
+    <button onclick="Next()" id="nextButton" class="button">Next</button>
+</div>
+
+</body>
+</html>

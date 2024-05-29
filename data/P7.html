@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Information</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            width: 100vw;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 90vw;
+        }
+        .header {
+            background-color: #4a4a4a;
+            color: white;
+            padding: 10px;
+            border-radius: 5px 5px 0 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .sub-header {
+            background-color: red;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .field-container {
+            margin-bottom: 10px;
+        }
+        .field-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .field-container input {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #ccc;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            height: 50px;
+            width: 120px;
+        }
+        .button.active {
+            background-color: red;
+            color: white;
+        }
+        .done-button {
+            background-color: #4a4a4a;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            height: 50px;
+            width: 120px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">SITE INFORMATION</div>
+    <div class="sub-header">Company Details</div>
+    <div class="field-container">
+        <label for="company-name">Company Name:</label>
+        <input type="text" id="company-name" name="company-name">
+    </div>
+    <div class="field-container">
+        <label for="company-address">Company Address:</label>
+        <input type="text" id="company-address" name="company-address">
+    </div>
+    <div class="field-container">
+        <label for="key-person">Key Responsible Person:</label>
+        <input type="text" id="key-person" name="key-person">
+    </div>
+    <div class="field-container">
+        <label for="contact-details">Contact Details:</label>
+        <input type="text" id="contact-details" name="contact-details">
+    </div>
+    <div class="field-container">
+        <label for="alt-person-1">Alt Responsible Person (1):</label>
+        <input type="text" id="alt-person-1" name="alt-person-1">
+    </div>
+    <div class="field-container">
+        <label for="alt-contact-details-1">Contact Details:</label>
+        <input type="text" id="alt-contact-details-1" name="alt-contact-details-1">
+    </div>
+    <div class="field-container">
+        <label for="alt-person-2">Alt Responsible Person (2):</label>
+        <input type="text" id="alt-person-2" name="alt-person-2">
+    </div>
+    <div class="field-container">
+        <label for="alt-contact-details-2">Contact Details:</label>
+        <input type="text" id="alt-contact-details-2" name="alt-contact-details-2">
+    </div>
+    <div class="field-container">
+        <label for="alt-person-3">Alt Responsible Person (3):</label>
+        <input type="text" id="alt-person-3" name="alt-person-3">
+    </div>
+    <div class="field-container">
+        <label for="alt-contact-details-3">Contact Details:</label>
+        <input type="text" id="alt-contact-details-3" name="alt-contact-details-3">
+    </div>
+    <div class="field-container">
+        <label for="alt-person-4">Alt Responsible Person (4):</label>
+        <input type="text" id="alt-person-4" name="alt-person-4">
+    </div>
+    <div class="field-container">
+        <label for="alt-contact-details-4">Contact Details:</label>
+        <input type="text" id="alt-contact-details-4" name="alt-contact-details-4">
+    </div>
+    <div class="field-container">
+        <label for="local-fire-department">Local Fire Department:</label>
+        <input type="text" id="local-fire-department" name="local-fire-department">
+    </div>
+    <div class="field-container">
+        <label for="local-fire-department-contact-details">Contact Details:</label>
+        <input type="text" id="local-fire-department-contact-details" name="local-fire-department-contact-details">
+    </div>
+    <button class="done-button" onclick="handleDone()">Next</button>
+</div>
+
+<script>
+    function handleDone() {
+        const inputs = document.querySelectorAll('input');
+        const formData = {};
+        
+        for (let input of inputs) {
+            if (input.value.trim() === '') {
+                alert('Please fill all fields');
+                return false;
+            }
+            formData[input.name] = input.value;
+        }
+
+        // JSON.stringify the form data
+        const jsonData = JSON.stringify(formData);
+        
+        // Replace this alert with the actual function call to ESP32
+        // alert('JSON Data: ' + jsonData);
+
+        fetch('/send_company_details', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: jsonData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // alert('data.status: ' + data.status + '\ndata.url: ' + data.url);
+            if (data.status === 'redirect') {
+                window.location.href = data.url;
+            } else {
+                console.log('Success:', data);
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    }
+</script>
+
+</body>
+</html>

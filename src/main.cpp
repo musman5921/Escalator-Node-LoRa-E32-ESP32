@@ -1,84 +1,141 @@
 /*
-Developing a mesh network using Ebyte LoRa E32 with ESP32
-The logic is same for each node
+ Project Name ------  FRS
+ Task --------------  Escalator Node Firmware with Esp32
+ Engineer ----------- Muhammad Usman
+ File --------------- Main File (Code Exceution Start in this file)
+ Company -----------  Machadev Pvt Limited
+
+Mesh Network Development:
+
+- Developed a mesh network using Ebyte LoRa E32 with ESP32.
+- The same logic applies to each node.
 
 Flow:
-The program is same for all nodes in the network
-  Each node listen to other nodes in a loop
-  Each node update activity of other nodes after every 10 seconds
-  Each node broadcast message after every 30 seconds
-  Each node print stats of network after every 60 seconds
+
+- The mesh network program is identical for all nodes in the network:
+  - Each node listens to other nodes in a loop.
+  - Each node updates the activity status of other nodes every 10 seconds.
+  - Each node broadcasts a message every 30 seconds.
+  - Each node prints network stats every 60 seconds.
 
 Tests:
-The network contains 4 nodes
-  Each node knows how many nodes are available, active and dead in his network
-  Each node successfully updates its node info container after every 60 seconds
-  
-platformio:
-  board selected: espressif esp32 dev module 
-  monitor speed: 115200
+
+- The network consists of 4 nodes:
+  - Each node knows how many nodes are available, active, and dead in its network.
+  - Each node successfully updates its node info container every 60 seconds.
+  - Note: There is no acknowledgment message for broadcasted messages.
+
+PlatformIO Configuration:
+
+[env:esp32dev]
+platform = espressif32
+board = esp32doit-devkit-v1
+framework = arduino
+monitor_speed = 115200
+lib_deps = mikem/RadioHead@^1.120
+
+Escalator Node:
+
+- The AUX pin of the LoRa module is NOT connected to the ESP32.
+- The relay is active low, with an LED connected in series with the relay.
+
+FyreBox Node:
+
+- The AUX pin of the LoRa module is NOT connected to the ESP32 S3 Mini.
+- Serial0: Used for program uploading and debugging.
+- Serial1: DWIN LCD is connected at IO15 (TX of LCD) and IO16 (RX of LCD).
+- LoRa Module: Connected at IO35 (RX) and IO36 (TX) using software serial.
+- SD Card Connection: The SIG pin must be HIGH (IO5) for the SD card to connect with the DWIN LCD.
+
+TODO:
+
+  - Integrate web server
 
 */
-/*
 
-Escalator node:
-AUX pin of LoRa module is NOT connected with ESP32 
-Relay is active Low
-and an led is connected in series with relay
+// Import Libraries
+#include "functions.h"
+#include "constants.h"
 
-no ack if message is broadcasted
+// Replace with your network credentials
+const char* ssid = "Machadev";
+const char* password = "13060064";
 
-*/
-
-#include <Arduino.h>
-#include <RHMesh.h>
-#include <RH_E32.h>
-#include <vector>
-
-#define RH_HAVE_SERIAL
-#define MOPIN 18
-#define M1PIN 19
-#define AUXPIN 32
-#define RLYPIN  21
-#define NODEID  1
-
-struct NodeStatus {
-    uint8_t nodeId;
-    unsigned long lastSeen;
-    bool isActive;
-};
-
-std::vector<NodeStatus> nodeStatuses;
-
-RH_E32 driver(&Serial2, MOPIN, M1PIN, AUXPIN); //M0, M1, AUX
-RHMesh mesh(driver, NODEID); // Node ID 1 for this example
-
-const __FlashStringHelper* getErrorString(uint8_t status);
-
-void broadcastPresence();
-void updateNodeStatus(uint8_t nodeId);
-void checkNodeActivity();
-void listenForNodes();
-size_t getTotalNodes();
-void printNodeStatuses();
-void printNetworkStats();
+// Create a web server object that listens for HTTP requests on port 80
+WebServer server(80);
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(Baud_RATE_SERIAL);
   Serial.println("Serial is ready.");
 
-  Serial2.begin(9600);
+  Serial2.begin(Baud_RATE_LORA);
   Serial.println("Serial2 is ready.");
 
   Serial.println("Initializing mesh...");
-  if (!mesh.init()) {
-        Serial.println("Mesh initialization failed");
-        return;
-    } 
-    Serial.println("Mesh initialized successfully.");
+  while(! initializeMESH()){  // stays in a loop until LoRa found 
+    Serial.println("Mesh initialization failed");
+    Serial.println("Retyring...");
+    delay(3000);
+   }
+  Serial.println("Mesh initialized successfully.");
+
+  // Initialize SPIFFS
+  if (!SPIFFS.begin(true)) {
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
+
+  // Set the ESP32 as a Wi-Fi Station and Access Point
+  WiFi.mode(WIFI_AP_STA);
+  
+  // Connect to Wi-Fi network with SSID and password
+  WiFi.begin(ssid, password);
+
+  // Start the Access Point
+  WiFi.softAP("FRS-Escalator", "FRS12345678");
+
+  // Print ESP32 Local IP Address
+  Serial.print("AP IP address: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Define routes
+  server.on("/", HTTP_GET, handleRoot);
+//  server.on("/connect", HTTP_GET, handleConnectGet);
+
+  server.on("/settings_option", HTTP_POST, handleSettingsOptionPost);
+  
+  server.on("/connect", HTTP_POST, handleConnectPost);
+
+  server.on("/client_login", HTTP_POST, handleClientLoginPost);
+  server.on("/admin_login", HTTP_POST, handleAdminLoginPost);
+
+  server.on("/connect_wifi", HTTP_POST, handleWifiConnectPost);
+
+  server.on("/connect_with_unique_key", HTTP_POST, handleUniqueKeyPost);
+
+  server.on("/fill_data_auto_or_not", HTTP_POST, handleFillDataAutoOrNotPost);
+
+  server.on("/send_company_details", HTTP_POST, handleGetCompanyDetailsPost);
+
+  server.on("/send_unit_details", HTTP_POST, handleGetUnitDetailsPost);
+
+  server.on("/send_manufacturer_details", HTTP_POST, handleGetManufacturerDetailsPost);
+
+  server.on("/wifi_access_point", HTTP_POST, handleGetWifiAccessPointPost);
+
+  // Serve all files from SPIFFS
+  server.serveStatic("/", SPIFFS, "/");
+
+  // Start server
+  server.begin();
+
 }
 
 void loop() {
+
+    // Handle client requests
+    server.handleClient();
+
     static unsigned long lastBroadcastTime = 0;
     static unsigned long lastCheckTime = 0;
     static unsigned long lastStatusPrintTime = 0;
@@ -97,110 +154,8 @@ void loop() {
     }
 
     if (currentMillis - lastStatusPrintTime > 60000) {  // Every 60 seconds
-        printNodeStatuses();  // Print the statuses of all nodes
-        printNetworkStats(); 
+        // printNodeStatuses();  // Print the statuses of all nodes
+        printNetworkStats();
         lastStatusPrintTime = currentMillis;
     }
-}
-
-void broadcastPresence() {
-    const char* presenceMsg = "Node Present";
-    uint8_t status = mesh.sendtoWait((uint8_t*)presenceMsg, strlen(presenceMsg) + 1, RH_BROADCAST_ADDRESS);
-    if (status == RH_ROUTER_ERROR_NONE) {
-        Serial.println("Message sent successfully");
-    } else {
-        Serial.print("Failed to send message, error: ");
-        Serial.println(status);
-        Serial.println((const __FlashStringHelper*)getErrorString(status));
-    }
-}
-
-// Function to listen for other nodes and update their status
-void listenForNodes() {
-    uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
-    uint8_t len = sizeof(buf);
-    uint8_t from;
-
-    if (mesh.recvfromAckTimeout(buf, &len, 2000, &from)) {
-        Serial.print("Received message from node ");
-        Serial.print(from);
-        Serial.print(": ");
-        Serial.println((char*)buf);
-
-        // Update node information or add new node
-        updateNodeStatus(from);
-    }
-}
-
-// Function to update or add a node status in the list
-void updateNodeStatus(uint8_t nodeId) {
-    bool nodeFound = false;
-    unsigned long currentTime = millis();
-    for (auto& status : nodeStatuses) {
-        if (status.nodeId == nodeId) {
-            status.lastSeen = currentTime;
-            status.isActive = true;
-            nodeFound = true;
-            break;
-        }
-    }
-    if (!nodeFound) {
-        nodeStatuses.push_back({nodeId, currentTime, true});
-    }
-}
-
-// Function to check and update the activity status of nodes
-void checkNodeActivity() {
-    unsigned long currentTime = millis();
-    const unsigned long timeout = 60000; // 1 minute timeout to consider a node as dead
-    for (auto& status : nodeStatuses) {
-        if (status.isActive && (currentTime - status.lastSeen > timeout)) {
-            status.isActive = false;
-            Serial.print("Node ");
-            Serial.print(status.nodeId);
-            Serial.println(" is now considered dead.");
-        }
-    }
-}
-
-// Function to get the total number of known nodes
-size_t getTotalNodes() {
-  return nodeStatuses.size();
-}
-
-// Function to print the status of all nodes known to this node
-void printNodeStatuses() {
-  size_t totalNodes = getTotalNodes();
-    Serial.print("Total Nodes: ");
-    Serial.println(totalNodes);
-
-    for (const auto& status : nodeStatuses) { // range based loop
-        Serial.print("Node ");
-        Serial.print(status.nodeId);
-        Serial.print(": ");
-        Serial.println(status.isActive ? "Active" : "Dead");
-    }
-}
-
-void printNetworkStats() {
-    int totalNodes = nodeStatuses.size();  // Total number of nodes is the size of the vector
-    int activeNodes = 0;
-    int deadNodes = 0;
-
-    // Count active and dead nodes
-    for (const auto& status : nodeStatuses) {
-        if (status.isActive) {
-            activeNodes++;  // Increment active node count
-        } else {
-            deadNodes++;    // Increment dead node count
-        }
-    }
-
-    // Print the results
-    Serial.print("Total Nodes: ");
-    Serial.println(totalNodes);
-    Serial.print("Active Nodes: ");
-    Serial.println(activeNodes);
-    Serial.print("Dead Nodes: ");
-    Serial.println(deadNodes);
 }

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FyreBox Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90vw;
+        }
+        .container img {
+            width: 150px;
+        }
+        .container input[type="text"],
+        .container input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .container button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+            height: 50px;
+            width: 120px;
+        }
+        .container button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="fyrebox_logo.jpg" alt="FyreBox Logo">
+        <h2>CLIENT PANEL</h2>
+        <form id="loginForm">
+            <input type="text" id="username" name="username" placeholder="Username">
+            <input type="password" id="password" name="password" placeholder="Password">
+            <div>
+                <input type="checkbox" id="rememberMe" name="rememberMe">
+                <label for="rememberMe">Remember me?</label>
+            </div>
+            <button type="button" onclick="login()">Login</button>
+            <button type="button" onclick="switchUser()">Switch User</button>
+        </form>
+        <p>If you don’t have any account, go to FyreBox web app or mobile app to create a new account.</p>
+    </div>
+
+    <script>
+        function login() {
+            var client_username = document.getElementById('username').value;
+            var client_password = document.getElementById('password').value;
+            var client_rememberMe = document.getElementById('rememberMe').checked;
+
+            if (client_rememberMe == true) {
+                client_rememberMe = "True"
+            }
+            else client_rememberMe = "False"
+
+            // Call ESP32 function here
+            console.log("Logging in with", username, password);
+            // Example of calling an ESP32 endpoint
+            fetch('client_login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ client_username: client_username, client_password: client_password, client_rememberMe: client_rememberMe })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // alert('data.status: ' + data.status + '\ndata.url: ' + data.url);
+                if (data.status === 'Login failed!!!') {
+                    alert(data.status + '\n' + data.reason);
+                } else if (data.status === 'redirect') {
+                    window.location.href = data.url;
+                } else {
+                    console.log('Success:', data);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+
+        function switchUser() {
+            var get_data = "go to admin login";
+            // Replace this alert with the actual function call to ESP32
+            // alert('SSID: ' + ssid + '\nPassword: ' + password);
+
+            fetch('/connect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ get_data: get_data})
+            })
+            .then(response => response.json())
+            .then(data => {
+                // alert('data.status: ' + data.status + '\ndata.url: ' + data.url);
+                if (data.status === 'redirect') {
+                    window.location.href = data.url;
+                } else {
+                    console.log('Success:', data);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
