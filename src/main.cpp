@@ -38,6 +38,9 @@ Escalator Node:
 
 - The AUX pin of the LoRa module is NOT connected to the ESP32.
 - The relay is active low, with an LED connected in series with the relay.
+- ssid: FRS-Escalator
+- password: FRS12345678
+- This node is activated by FyreBox node (it should send its state back, weather active or not)
 
 FyreBox Node:
 
@@ -48,7 +51,7 @@ FyreBox Node:
 - SD Card Connection: The SIG pin must be HIGH (IO5) for the SD card to connect with the DWIN LCD.
 
 TODO:
-
+  - Integrate RTOS
   - Integrate web server
 
 */
@@ -56,10 +59,16 @@ TODO:
 // Import Libraries
 #include "functions.h"
 #include "constants.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 // Replace with your network credentials
+// const char* ssid = "Machadev";
+// const char* password = "13060064";
+// const char* ssid = "FRS";
+// const char* password = "frspassword";
 const char* ssid = "Machadev";
-const char* password = "13060064";
+const char* password = "Machadev321";
 
 // Create a web server object that listens for HTTP requests on port 80
 WebServer server(80);
@@ -78,6 +87,11 @@ void setup() {
     delay(3000);
    }
   Serial.println("Mesh initialized successfully.");
+
+  xTaskCreatePinnedToCore(LoRatask, "LoRatask", 4096, NULL, 1, &xHandleLoRa, 1);
+
+  // xTaskCreate(dateTimeTask, "DateTimeTask", 2048, NULL, 4, &xHandledatetime);
+  // vTaskSuspend(xHandledatetime);
 
   // Initialize SPIFFS
   if (!SPIFFS.begin(true)) {

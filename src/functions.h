@@ -36,6 +36,9 @@ struct NodeStatus {
  */
 const __FlashStringHelper* getErrorString(uint8_t status);
 
+// For LoRa Mesh
+void LoRatask(void* parameter);
+
 /**
  * @brief Initializes the MESH network.
  *
@@ -47,6 +50,20 @@ bool initializeMESH();
  * @brief Broadcasts the presence of the current node to other nodes in the network.
  */
 void broadcastPresence();
+
+// Broadcasts active message 
+void activeState();
+
+// Broadcasts inactive message 
+void inactiveState();
+
+/**
+ * @brief Listens for incoming messages from other nodes.
+ *
+ * This function handle communication with other nodes, including receiving
+ * and responding to messages.
+ */
+void listenForNodes();
 
 /**
  * @brief Updates the status of a node given its ID.
@@ -62,14 +79,6 @@ void updateNodeStatus(uint8_t nodeId);
  * and takes appropriate actions based on the results.
  */
 void checkNodeActivity();
-
-/**
- * @brief Listens for incoming messages from other nodes.
- *
- * This function handle communication with other nodes, including receiving
- * and responding to messages.
- */
-void listenForNodes();
 
 /**
  * @brief Gets the total number of nodes currently in the network.

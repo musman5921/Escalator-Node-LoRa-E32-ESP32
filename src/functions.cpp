@@ -31,6 +31,38 @@ const __FlashStringHelper* getErrorString(uint8_t status) {
   }
 }
 
+// For LoRa Mesh
+void LoRatask(void* parameter){
+    Serial.println("LoRatask Started");
+    for (;;) {
+        static unsigned long lastBroadcastTime = 0;
+        static unsigned long lastCheckTime = 0;
+        static unsigned long lastStatusPrintTime = 0;
+        unsigned long currentMillis = millis();
+
+        if (currentMillis - lastBroadcastTime > 30000) {  // Every 30 seconds
+            broadcastPresence();
+            lastBroadcastTime = currentMillis;
+        }
+
+        listenForNodes();
+
+        if (currentMillis - lastCheckTime > 10000) {  // Every 10 seconds
+            checkNodeActivity();
+            lastCheckTime = currentMillis;
+        }
+
+        if (currentMillis - lastStatusPrintTime > 60000) {  // Every 60 seconds
+            // printNodeStatuses();  // Print the statuses of all nodes
+            printNetworkStats(); 
+            lastStatusPrintTime = currentMillis;
+        }
+    }
+    Serial.println("LoRatask completed");
+    Serial.println("LoRatask Suspended");
+    vTaskSuspend(xHandleLoRa); // Suspend the task
+}
+
 // Initializes the MESH network.
 bool initializeMESH() {
 if (!mesh.init()) {
@@ -42,15 +74,48 @@ if (!mesh.init()) {
 
 // Broadcasts the presence of the current node to other nodes in the network.
 void broadcastPresence() {
-    const char* presenceMsg = "Node Present";
-    uint8_t status = mesh.sendtoWait((uint8_t*)presenceMsg, strlen(presenceMsg) + 1, RH_BROADCAST_ADDRESS);
-    if (status == RH_ROUTER_ERROR_NONE) {
-        Serial.println("Message sent successfully");
-    } else {
-        Serial.print("Failed to send message, error: ");
-        Serial.println(status);
-        Serial.println((const __FlashStringHelper*)getErrorString(status));
+  const char* presenceMsg = "Node Present";
+  uint8_t status = mesh.sendtoWait((uint8_t*)presenceMsg, strlen(presenceMsg) + 1, RH_BROADCAST_ADDRESS);
+  if (status == RH_ROUTER_ERROR_NONE) {
+      Serial.println("Presence message sent successfully");
+  } else {
+      Serial.print("Failed to send presence message, error: ");
+      Serial.println(status);
+      Serial.println((const __FlashStringHelper*)getErrorString(status));
+  }
+}
+
+// Broadcasts active message 
+void activeState() {
+  if(activateRelayonce) {
+      activateRelayonce = false;
+      digitalWrite(RLYPIN, HIGH); // turn on the relay
     }
+
+  const char* activeMsg = "Actived";
+  uint8_t status = mesh.sendtoWait((uint8_t*)activeMsg, strlen(activeMsg) + 1, RH_BROADCAST_ADDRESS);
+  if (status == RH_ROUTER_ERROR_NONE) {
+      Serial.println("Active message sent successfully");
+  } else {
+      Serial.print("Failed to send active message, error: ");
+      Serial.println(status);
+      Serial.println((const __FlashStringHelper*)getErrorString(status));
+  }
+}
+
+// Broadcasts inactive message 
+void inactiveState() {
+  digitalWrite(RLYPIN, LOW); // turn off the relay
+
+  const char* inactiveMsg = "Deactived";
+  uint8_t status = mesh.sendtoWait((uint8_t*)inactiveMsg, strlen(inactiveMsg) + 1, RH_BROADCAST_ADDRESS);
+  if (status == RH_ROUTER_ERROR_NONE) {
+      Serial.println("Inactive message sent successfully");
+  } else {
+      Serial.print("Failed to send inactive message, error: ");
+      Serial.println(status);
+      Serial.println((const __FlashStringHelper*)getErrorString(status));
+  }
 }
 
 // Listens for incoming messages from other nodes.
@@ -65,8 +130,16 @@ void listenForNodes() {
         Serial.print(": ");
         Serial.println((char*)buf);
 
-        // Update node information or add new node
-        updateNodeStatus(from);
+        if((char*)buf == "Active") {
+          activeState(); // Broadcast active message
+          activateRelayonce = true;
+        }
+        else if((char*)buf == "Inactive") {
+          inactiveState(); // Broadcast inactive message
+        }
+        else if((char*)buf == "Node Present") {
+          updateNodeStatus(from); // Update node information
+        }
     }
 }
 
